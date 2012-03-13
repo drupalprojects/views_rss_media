@@ -1,1 +1,6 @@
-name = Views RSS: Media (MRSS) Elements
+name = "Views RSS: Media (MRSS) Elements"
+description = "Provides Media (MRSS) element set for Views RSS module"
+package = Views
+dependencies[] = views_rss
+dependencies[] = views_rss_core
+core = "7.x"
