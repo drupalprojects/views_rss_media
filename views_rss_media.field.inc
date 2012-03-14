@@ -89,6 +89,9 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
     if (!empty($display['settings']['expression'])) {
       $rss_element['attributes']['expression'] = $display['settings']['expression'];
     }
+    if ($langcode != LANGUAGE_NONE) {
+      $rss_element['attributes']['lang'] = $langcode;
+    }
 
     // Additional properties for images.
     if ($item['type'] == 'image') {
