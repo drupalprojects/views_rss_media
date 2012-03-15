@@ -12,6 +12,7 @@ function views_rss_media_field_formatter_info() {
         'group_multiple_values' => 0,
         'medium' => '',
         'expression' => '',
+        'image_style' => '',
       ),
     ),
   );
@@ -24,6 +25,17 @@ function views_rss_media_field_formatter_info() {
 function views_rss_media_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
+
+  if ($field['type'] == 'image') {
+    $image_styles = image_style_options(FALSE);
+    $element['image_style'] = array(
+      '#title' => t('Image style'),
+      '#type' => 'select',
+      '#default_value' => $settings['image_style'],
+      '#empty_option' => t('None (original image)'),
+      '#options' => $image_styles,
+    );
+  }
 
   $element['group_multiple_values'] = array(
     '#title' => t('Group multiple field values in one &lt;media:group&gt; element'),
@@ -68,6 +80,20 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
 
   $summary = array();
 
+  if ($field['type'] == 'image') {
+    $image_styles = image_style_options(FALSE);
+    // Unset possible 'No defined styles' option.
+    unset($image_styles['']);
+    // Styles could be lost because of enabled/disabled modules that defines
+    // their styles in code.
+    if (isset($image_styles[$settings['image_style']])) {
+      $summary[] = t('RSS &lt;media:content&gt; element: @style', array('@style' => $image_styles[$settings['image_style']]));
+    }
+    else {
+      $summary[] = t('RSS &lt;media:content&gt; element');
+    }
+  }
+
   $value = (!empty($display['settings']['medium'])) ? $display['settings']['medium'] : t('none');
   $summary[] = t('Medium: !medium', array('!medium' => $value));
 
@@ -90,8 +116,23 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       unset($items[$delta]);
       continue;
     }
+
+    // Default file URL.
+    $item_uri = $item['uri'];
+    $url = file_create_url($item_uri);
     
-    $url = file_create_url($item['uri']);
+    // For images provide styled image URL if required.
+    if (!empty($display['settings']['image_style']) && $image_style = image_style_load($display['settings']['image_style'])) {
+      // Get full image URI based on provided image style.
+      $url = image_style_url($display['settings']['image_style'], $item_uri);
+      // Make sure that image style file has already been created.
+      $path = image_style_path($display['settings']['image_style'], $item_uri);
+      if (!file_exists(drupal_realpath($path))) {
+        image_style_create_derivative($image_style, $item_uri, $path);
+      }
+      $item_uri = $path;
+    }
+
     $rss_element = array(
       'key' => 'media:content',
       'attributes' => array(
@@ -130,7 +171,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
 
     // Additional properties for images.
     if ($item['type'] == 'image') {
-      $media_info = image_load($item['uri']);
+      $media_info = image_load($item_uri);
       if (!empty($media_info)) {
         $item['info'] = $media_info;
         $rss_element['attributes']['width'] = $media_info->info['width'];
@@ -140,7 +181,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
 
     // Additional properties for audio files.
     if ($item['type'] == 'audio' && module_exists('getid3')) {
-      $media_info = getid3_analyze(drupal_realpath($item['uri']));
+      $media_info = getid3_analyze(drupal_realpath($item_uri));
       if (!empty($media_info)) {
         $item['info'] = $media_info;
         $rss_element['attributes']['bitrate'] = round($media_info['audio']['bitrate'] / 1000);
@@ -152,7 +193,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
 
     // Additional properties for video files.
     if ($item['type'] == 'video' && module_exists('getid3')) {
-      $media_info = getid3_analyze(drupal_realpath($item['uri']));
+      $media_info = getid3_analyze(drupal_realpath($item_uri));
       if (!empty($media_info)) {
         $item['info'] = $media_info;
         $rss_element['attributes']['bitrate'] = round($media_info['video']['bitrate'] / 1000);
