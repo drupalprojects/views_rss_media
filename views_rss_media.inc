@@ -13,7 +13,7 @@ function views_rss_media_preprocess_item_content(&$variables) {
   if (!empty($variables['raw'])) {
     foreach ($variables['raw'] as $delta => $raw_element) {
       if (!empty($raw_element['rendered']['#markup'])) {
-        // If there is more than one item in the field, 
+        // If there is more than one item in the field,
         // let's render it as <media:group> feed element.
         if (count($variables['raw']) > 1) {
           // First item will be the default one.
@@ -39,4 +39,27 @@ function views_rss_media_preprocess_item_content(&$variables) {
       $variables['value'] = $value;
     }
   }
+}
+
+/**
+ * Preprocess function for item <media:title> and <media:description> elements.
+ */
+function views_rss_media_preprocess_item_text(&$variables) {
+  // No value = no preprocessing.
+  if (empty($variables['value'])) {
+    return;
+  }
+  // Check whether original value format is text or HTML.
+  $type = 'plain';
+  $value_decoded = htmlspecialchars_decode($variables['value'], ENT_QUOTES);
+  if ($value_decoded != strip_tags($value_decoded)) {
+    $type = 'html';
+  }
+  // Add "type" argument to an element with its format.
+  $variables['value'] = array(
+    'value' => $variables['value'],
+    'arguments' => array(
+      'type' => $type,
+    ),
+  );
 }

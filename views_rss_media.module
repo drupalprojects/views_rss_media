@@ -36,9 +36,30 @@ function views_rss_media_views_rss_namespaces() {
  */
 function views_rss_media_views_rss_item_elements() {
   $elements['media:content'] = array(
-    'description' => t(''),
+    'description' => t('Contains the primary metadata entries needed to index and organize media content.'),
     'preprocess functions' => array('views_rss_media_preprocess_item_content'),
-    'help' => 'http://video.search.yahoo.com/mrss',
+    'help' => 'http://www.rssboard.org/media-rss#media-content',
+  );
+  $elements['media:title'] = array(
+    'description' => t('The title of the particular media object.'),
+    'preprocess functions' => array(
+      'views_rss_htmlspecialchars',
+      'views_rss_media_preprocess_item_text',
+    ),
+    'help' => 'http://www.rssboard.org/media-rss#media-title',
+  );
+  $elements['media:description'] = array(
+    'description' => t('Short description describing the media object typically a sentence in length.'),
+    'preprocess functions' => array(
+      'views_rss_htmlspecialchars',
+      'views_rss_media_preprocess_item_text',
+    ),
+    'help' => 'http://www.rssboard.org/media-rss#media-description',
+  );
+  $elements['media:keywords'] = array(
+    'description' => t('Highly relevant keywords describing the media object with typically a maximum of 10 words. The keywords and phrases should be comma-delimited.'),
+    'preprocess functions' => array('views_rss_htmlspecialchars'),
+    'help' => 'http://www.rssboard.org/media-rss#media-keywords',
   );
   return $elements;
 }
