@@ -40,7 +40,9 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
     '#default_value' => $settings['medium'],
     '#empty_option' => t('None (do not display)'),
     '#options' => drupal_map_assoc(array('image', 'audio', 'video', 'document', 'executable')),
-    '#description' => t('<em>medium</em> attribute of &lt;media:content&gt; element is the type of object. While this attribute can at times seem redundant if type is supplied, it is included because it simplifies decision making on the reader side, as well as flushes out any ambiguities between MIME type and object type. It is an optional attribute.'),
+    '#description' => t('<em>medium</em> attribute of &lt;media:content&gt; element is the type of object. While this attribute can at times seem redundant if type is supplied, it is included because it simplifies decision making on the reader side, as well as flushes out any ambiguities between MIME type and object type. It is an optional attribute. !more_link', array(
+      '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-content', array('attributes' => array('title' => t('Need more information?')))),
+    )),
   );
 
   $element['expression'] = array(
@@ -49,7 +51,9 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
     '#default_value' => $settings['expression'],
     '#empty_option' => t('None (do not display)'),
     '#options' => drupal_map_assoc(array('sample', 'full', 'nonstop')),
-    '#description' => t('<em>expression</em> attribute of &lt;media:content&gt; element determines if the object is a sample or the full version of the object, or even if it is a continuous stream. Default value is "full". It is an optional attribute.'),
+    '#description' => t('<em>expression</em> attribute of &lt;media:content&gt; element determines if the object is a sample or the full version of the object, or even if it is a continuous stream. Default value is "full". It is an optional attribute. !more_link', array(
+      '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-content', array('attributes' => array('title' => t('Need more information?')))),
+    )),
   );
 
   return $element;
