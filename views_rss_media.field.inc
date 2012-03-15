@@ -8,7 +8,11 @@ function views_rss_media_field_formatter_info() {
     'media_content' => array(
       'label' => t('RSS <media:content> element'),
       'field types' => array('image', 'file'),
-      'settings' => array('medium' => '', 'expression' => ''),
+      'settings' => array(
+        'group_multiple_values' => 0,
+        'medium' => '',
+        'expression' => '',
+      ),
     ),
   );
   return $formatters;
@@ -21,13 +25,22 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
 
+  $element['group_multiple_values'] = array(
+    '#title' => t('Group multiple field values in one &lt;media:group&gt; element'),
+    '#type' => 'checkbox',
+    '#default_value' => $settings['group_multiple_values'],
+    '#description' => t('&lt;media:group&gt; element allows grouping of &lt;media:content&gt; elements that are effectively the same content, yet different representations. For instance: the same song recorded in both the WAV and MP3 format. It is an optional element that must only be used for this purpose. !more_link', array(
+      '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-group', array('attributes' => array('title' => t('Need more information?')))),
+    )),
+  );
+
   $element['medium'] = array(
     '#title' => t('Medium'),
     '#type' => 'select',
     '#default_value' => $settings['medium'],
     '#empty_option' => t('None (do not display)'),
     '#options' => drupal_map_assoc(array('image', 'audio', 'video', 'document', 'executable')),
-    '#description' => t('<em>medium</em> is the type of object. While this attribute can at times seem redundant if type is supplied, it is included because it simplifies decision making on the reader side, as well as flushes out any ambiguities between MIME type and object type. It is an optional attribute.'),
+    '#description' => t('<em>medium</em> attribute of &lt;media:content&gt; element is the type of object. While this attribute can at times seem redundant if type is supplied, it is included because it simplifies decision making on the reader side, as well as flushes out any ambiguities between MIME type and object type. It is an optional attribute.'),
   );
 
   $element['expression'] = array(
@@ -36,7 +49,7 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
     '#default_value' => $settings['expression'],
     '#empty_option' => t('None (do not display)'),
     '#options' => drupal_map_assoc(array('sample', 'full', 'nonstop')),
-    '#description' => t('<em>expression</em> determines if the object is a sample or the full version of the object, or even if it is a continuous stream. Default value is "full". It is an optional attribute.'),
+    '#description' => t('<em>expression</em> attribute of &lt;media:content&gt; element determines if the object is a sample or the full version of the object, or even if it is a continuous stream. Default value is "full". It is an optional attribute.'),
   );
 
   return $element;
@@ -65,15 +78,15 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
  */
 function views_rss_media_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  
-  foreach ($items as $delta => $item) {
 
+  foreach ($items as $delta => $item) {
+    
     // Inside a view item may contain NULL data. In that case, just return.
     if (empty($item['fid'])) {
       unset($items[$delta]);
       continue;
     }
-
+    
     $url = file_create_url($item['uri']);
     $rss_element = array(
       'key' => 'media:content',
@@ -91,6 +104,24 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
     }
     if ($langcode != LANGUAGE_NONE) {
       $rss_element['attributes']['lang'] = $langcode;
+    }
+    
+    // Add "title" property of image fields
+    // to <media:title> subelement of <media:content> element.
+    if (!empty($item['title'])) {
+      $rss_element['value'][] = array(
+        'key' => 'media:title',
+        'value' => $item['title'],
+      );
+    }
+
+    // Add "description" property of file fields
+    // to <media:description> subelement of <media:content> element.
+    if (!empty($item['description'])) {
+      $rss_element['value'][] = array(
+        'key' => 'media:description',
+        'value' => $item['description'],
+      );
     }
 
     // Additional properties for images.
@@ -132,6 +163,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       '#item' => $item,
       '#markup' => format_xml_elements(array($rss_element)),
       '#rss_element' => $rss_element,
+      '#settings' => $display['settings'],
     );
 
   }

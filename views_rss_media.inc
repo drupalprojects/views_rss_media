@@ -15,7 +15,7 @@ function views_rss_media_preprocess_item_content(&$variables) {
       if (!empty($raw_element['rendered']['#markup'])) {
         // If there is more than one item in the field,
         // let's render it as <media:group> feed element.
-        if (count($variables['raw']) > 1) {
+        if (count($variables['raw']) > 1 && !empty($raw_element['rendered']['#settings']['group_multiple_values'])) {
           // First item will be the default one.
           if ($delta == 0) {
             $raw_element['rendered']['#rss_element']['attributes']['isDefault'] = 'true';
