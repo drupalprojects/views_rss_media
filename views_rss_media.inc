@@ -9,8 +9,10 @@
  * Preprocess function for item <media:content> element.
  */
 function views_rss_media_preprocess_item_content(&$variables) {
-  $value = array();
+  // If raw values array is available, reprocess all items.
+  // This makes sure we get rid of any possible HTML, separators etc.
   if (!empty($variables['raw'])) {
+    $value = array();
     foreach ($variables['raw'] as $delta => $raw_element) {
       if (!empty($raw_element['rendered']['#markup'])) {
         // If there is more than one item in the field,
@@ -62,4 +64,27 @@ function views_rss_media_preprocess_item_text(&$variables) {
       'type' => $type,
     ),
   );
+}
+
+/**
+ * Preprocess function for item <media:thumbnail> element.
+ */
+function views_rss_media_preprocess_item_thumbnail(&$variables) {
+  // No value = no preprocessing.
+  if (empty($variables['value'])) {
+    return;
+  }
+  // If raw values array is available, reprocess items.
+  // This makes sure we get rid of any possible HTML, separators etc.
+  if (!empty($variables['raw'])) {
+    $value = array();
+    foreach ($variables['raw'] as $delta => $raw_element) {
+      if (!empty($raw_element['rendered']['#markup'])) {
+        $value['elements'][$delta]['markup'] = $raw_element['rendered']['#markup'];
+      }
+    }
+    if (!empty($value)) {
+      $variables['value'] = $value;
+    }
+  }
 }
