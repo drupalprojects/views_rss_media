@@ -88,3 +88,22 @@ function views_rss_media_preprocess_item_thumbnail(&$variables) {
     }
   }
 }
+
+/**
+ * Preprocess function for item <media:category> element.
+ */
+function views_rss_media_preprocess_item_category(&$variables) {
+  // No value = no preprocessing.
+  if (empty($variables['value'])) {
+    return;
+  }
+  $elements = array();
+  $categories = explode(',', $variables['value']);
+  foreach ($categories as $category) {
+    $elements[] = array(
+      'element' => $variables['element'],
+      'value' => trim($category),
+    );
+  }
+  $variables['value'] = array('elements' => $elements);
+}
