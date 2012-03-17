@@ -9,10 +9,12 @@ function views_rss_media_field_formatter_info() {
       'label' => t('RSS <media:content> element'),
       'field types' => array('image', 'file'),
       'settings' => array(
+        'image_style' => '',
         'group_multiple_values' => 0,
         'medium' => '',
         'expression' => '',
-        'image_style' => '',
+        'generate_hash' => 0,
+        'hash_algo' => 'md5',
       ),
     ),
     'media_thumbnail' => array(
@@ -74,6 +76,36 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
       )),
     );
     
+    // hash_file() function used to generate file hashes
+    // is available only in PHP versions >= 5.1.2.
+    // @see http://www.php.net/manual/en/function.hash-file.php
+    if (version_compare(phpversion(), '5.1.2') >= 0) {
+      
+      $element['generate_hash'] = array(
+        '#title' => t('Generate hash values for files'),
+        '#type' => 'checkbox',
+        '#default_value' => $settings['generate_hash'],
+        '#description' => t('Enabling this will generate &lt;media:hash&gt; subelement for each &lt;media:content&gt; element. !more_link', array(
+          '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-hash', array('attributes' => array('title' => t('Need more information?')))),
+        )),
+      );
+      
+      $element['hash_algo'] = array(
+        '#title' => t('Hashing algorithm'),
+        '#type' => 'select',
+        '#default_value' => $settings['hash_algo'],
+        '#options' => drupal_map_assoc(array('md5', 'sha1')),
+        '#description' => t('Indicates the algorithm used to create the hash. Will be added as <em>algo</em> attribute of &lt;media:hash&gt; element. !more_link', array(
+          '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-hash', array('attributes' => array('title' => t('Need more information?')))),
+        )),
+      );
+      // Add #states value for showing/hiding "Hashing algorithm"
+      // field based on state of "generate_hash" field value.
+      $name = ($view_mode == '_dummy') ? 'options[settings][generate_hash]' : 'fields[' . $field['field_name'] . '][settings_edit_form][settings][generate_hash]';
+      $element['hash_algo']['#states']['invisible'][':input[name="' . $name . '"]'] = array('checked' => FALSE);
+      
+    }
+    
   }
 
   return $element;
@@ -114,6 +146,10 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
     $value = (!empty($display['settings']['expression'])) ? $display['settings']['expression'] : t('none');
     $summary[] = t('Expression: !expression', array('!expression' => $value));
   
+    if (!empty($display['settings']['generate_hash'])) {
+      $summary[] = t('Generate hash: !algo', array('!algo' => $display['settings']['hash_algo']));
+    }
+
   }
 
   return implode('<br />', $summary);
@@ -184,6 +220,21 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
         $rss_element['value'][] = array(
           'key' => 'media:description',
           'value' => $item['description'],
+        );
+      }
+
+      // Generate file hash for <media:hash> element.
+      // hash_file() function used to generate file hashes
+      // is available only in PHP versions >= 5.1.2.
+      // @see http://www.php.net/manual/en/function.hash-file.php
+      if (version_compare(phpversion(), '5.1.2') >= 0 && !empty($display['settings']['generate_hash'])) {
+        $hash = hash_file($display['settings']['hash_algo'], $item_uri);
+        $rss_element['value'][] = array(
+          'key' => 'media:hash',
+          'value' => $hash,
+          'attributes' => array(
+            'algo' => strtr($display['settings']['hash_algo'], array('sha1' => 'sha-1')),
+          ),
         );
       }
 
