@@ -58,18 +58,16 @@ function views_rss_media_views_rss_item_elements() {
   );
   $elements['media:keywords'] = array(
     'description' => t('Highly relevant keywords describing the media object with typically a maximum of 10 words. The keywords and phrases should be comma-delimited.'),
-    'preprocess functions' => array('views_rss_htmlspecialchars'),
     'help' => 'http://www.rssboard.org/media-rss#media-keywords',
   );
   $elements['media:thumbnail'] = array(
     'description' => t('Allows particular images to be used as representative images for the media object.'),
-    'preprocess functions' => array('views_rss_media_preprocess_item_thumbnail'),
     'help' => 'http://www.rssboard.org/media-rss#media-thumbnails',
   );
-  $elements['media:category'] = array(
-    'description' => t('Allows a taxonomy to be set that gives an indication of the type of media content, and its particular contents.'),
-    'preprocess functions' => array('views_rss_media_preprocess_item_category'),
-    'help' => 'http://www.rssboard.org/media-rss#media-category',
-  );
+//  $elements['media:category'] = array(
+//    'description' => t('Allows a taxonomy to be set that gives an indication of the type of media content, and its particular contents.'),
+//    'preprocess functions' => array('views_rss_media_preprocess_item_category'),
+//    'help' => 'http://www.rssboard.org/media-rss#media-category',
+//  );
   return $elements;
 }

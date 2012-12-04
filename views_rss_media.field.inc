@@ -7,7 +7,7 @@ function views_rss_media_field_formatter_info() {
   $formatters = array(
     'media_content' => array(
       'label' => t('RSS <media:content> element'),
-      'field types' => array('image', 'file'),
+      'field types' => array('image', 'file', 'video'),
       'settings' => array(
         'image_style' => '',
         'group_multiple_values' => 0,
@@ -19,7 +19,7 @@ function views_rss_media_field_formatter_info() {
     ),
     'media_thumbnail' => array(
       'label' => t('RSS <media:thumbnail> element'),
-      'field types' => array('image'),
+      'field types' => array('image', 'file', 'video'),
     ),
   );
   return $formatters;
@@ -42,7 +42,7 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
       '#options' => $image_styles,
     );
   }
-  
+
   if ($display['type'] == 'media_content') {
 
     $element['group_multiple_values'] = array(
@@ -75,12 +75,12 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
         '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-content', array('attributes' => array('title' => t('Need more information?')))),
       )),
     );
-    
+
     // hash_file() function used to generate file hashes
     // is available only in PHP versions >= 5.1.2.
     // @see http://www.php.net/manual/en/function.hash-file.php
     if (version_compare(phpversion(), '5.1.2') >= 0) {
-      
+
       $element['generate_hash'] = array(
         '#title' => t('Generate hash values for files'),
         '#type' => 'checkbox',
@@ -89,7 +89,7 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
           '!more_link' => l('[?]', 'http://www.rssboard.org/media-rss#media-hash', array('attributes' => array('title' => t('Need more information?')))),
         )),
       );
-      
+
       $element['hash_algo'] = array(
         '#title' => t('Hashing algorithm'),
         '#type' => 'select',
@@ -103,9 +103,9 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
       // field based on state of "generate_hash" field value.
       $name = ($view_mode == '_dummy') ? 'options[settings][generate_hash]' : 'fields[' . $field['field_name'] . '][settings_edit_form][settings][generate_hash]';
       $element['hash_algo']['#states']['invisible'][':input[name="' . $name . '"]'] = array('checked' => FALSE);
-      
+
     }
-    
+
   }
 
   return $element;
@@ -126,16 +126,16 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
     unset($image_styles['']);
     // Styles could be lost because of enabled/disabled modules that defines
     // their styles in code.
-    if (isset($image_styles[$settings['image_style']])) {
+    if (isset($settings['image_style']) && isset($image_styles[$settings['image_style']])) {
       $summary[] = t('Image style: @style', array('@style' => $image_styles[$settings['image_style']]));
     }
     else {
       $summary[] = t('Original image');
     }
   }
-  
+
   if ($display['type'] == 'media_content') {
-  
+
     if (!empty($display['settings']['group_multiple_values'])) {
       $summary[] = t('Group multiple values');
     }
@@ -145,7 +145,7 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
 
     $value = (!empty($display['settings']['expression'])) ? $display['settings']['expression'] : t('none');
     $summary[] = t('Expression: !expression', array('!expression' => $value));
-  
+
     if (!empty($display['settings']['generate_hash'])) {
       $summary[] = t('Generate hash: !algo', array('!algo' => $display['settings']['hash_algo']));
     }
@@ -160,8 +160,14 @@ function views_rss_media_field_formatter_settings_summary($field, $instance, $vi
  */
 function views_rss_media_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  
+
   foreach ($items as $delta => $item) {
+
+    // When generating a thumbnail for a video file,
+    // let's process only thumbnail image details.
+    if ($item['type'] == 'video' && $display['type'] == 'media_thumbnail') {
+      $item = (array) $item['thumbnailfile'];
+    }
 
     // Inside a view item may contain NULL data. In that case, just return.
     if (empty($item['fid'])) {
@@ -184,7 +190,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       }
       $item_uri = $path;
     }
-    
+
     if ($display['type'] == 'media_content') {
 
       $rss_element = array(
@@ -203,39 +209,6 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       }
       if ($langcode != LANGUAGE_NONE) {
         $rss_element['attributes']['lang'] = $langcode;
-      }
-
-      // Add "title" property of image fields
-      // to <media:title> subelement of <media:content> element.
-      if (!empty($item['title'])) {
-        $rss_element['value'][] = array(
-          'key' => 'media:title',
-          'value' => $item['title'],
-        );
-      }
-
-      // Add "description" property of file fields
-      // to <media:description> subelement of <media:content> element.
-      if (!empty($item['description'])) {
-        $rss_element['value'][] = array(
-          'key' => 'media:description',
-          'value' => $item['description'],
-        );
-      }
-
-      // Generate file hash for <media:hash> element.
-      // hash_file() function used to generate file hashes
-      // is available only in PHP versions >= 5.1.2.
-      // @see http://www.php.net/manual/en/function.hash-file.php
-      if (version_compare(phpversion(), '5.1.2') >= 0 && !empty($display['settings']['generate_hash'])) {
-        $hash = hash_file($display['settings']['hash_algo'], $item_uri);
-        $rss_element['value'][] = array(
-          'key' => 'media:hash',
-          'value' => $hash,
-          'attributes' => array(
-            'algo' => strtr($display['settings']['hash_algo'], array('sha1' => 'sha-1')),
-          ),
-        );
       }
 
       // Additional properties for images.
@@ -272,11 +245,46 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
           $rss_element['attributes']['height'] = $media_info['video']['resolution_y'];
         }
       }
-      
+
+      // Generate file hash for <media:hash> element.
+      // hash_file() function used to generate file hashes
+      // is available only in PHP versions >= 5.1.2.
+      // @see http://www.php.net/manual/en/function.hash-file.php
+      if (version_compare(phpversion(), '5.1.2') >= 0 && !empty($display['settings']['generate_hash'])) {
+        $hash = hash_file($display['settings']['hash_algo'], $item_uri);
+        $rss_element['value'][] = array(
+          'key' => 'media:hash',
+          'value' => $hash,
+          'attributes' => array(
+            'algo' => strtr($display['settings']['hash_algo'], array('sha1' => 'sha-1')),
+          ),
+        );
+      }
+
+      // Other additional sub-elements.
+      $extra_fields = array('title', 'description');
+      foreach ($extra_fields as $extra_field) {
+        $field_extra_field = 'field_' . $extra_field;
+        // Images could have 'title' and 'description' properties.
+        if (isset($item[$extra_field]) && $item[$extra_field]) {
+          $rss_element['value'][] = array(
+            'key' => 'media:' . $extra_field,
+            'value' => $item[$extra_field],
+          );
+        }
+        // Other fieldable entities (think media) could have, well, fields.
+        if (isset($item[$field_extra_field][LANGUAGE_NONE][0]['value']) && $item[$field_extra_field][LANGUAGE_NONE][0]['value']) {
+          $rss_element['value'][] = array(
+            'key' => 'media:' . $extra_field,
+            'value' => $item[$field_extra_field][LANGUAGE_NONE][0]['value'],
+          );
+        }
+      }
+
     }
-    
+
     if ($display['type'] == 'media_thumbnail') {
-      
+
       $rss_element = array(
         'key' => 'media:thumbnail',
         'attributes' => array(
@@ -305,5 +313,6 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
 
   }
 
+//  dpm($element, '$element');
   return $element;
 }
