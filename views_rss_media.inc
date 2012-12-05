@@ -52,18 +52,17 @@ function views_rss_media_preprocess_item_text(&$variables) {
  * Preprocess function for item <media:category> element.
  */
 function views_rss_media_preprocess_item_category(&$variables) {
-//  dpm($variables, '$variables');
   // No value = no preprocessing.
   if (empty($variables['elements'][0]['value'])) {
     return;
   }
-  $elements = array();
-  $categories = explode(',', $variables['value']);
-  foreach ($categories as $category) {
-    $elements[] = array(
-      'element' => $variables['element'],
-      'value' => trim($category),
-    );
+  if (!empty($variables['raw'])) {
+    $value = array();
+    foreach ($variables['raw'] as $delta => $element) {
+      if (!empty($element['rendered']['#rss_element'])) {
+        $value[] = $element['rendered']['#rss_element'];
+      }
+    }
+    $variables['elements'] = $value;
   }
-  $variables['value'] = array('elements' => $elements);
 }

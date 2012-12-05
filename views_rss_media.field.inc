@@ -20,6 +20,12 @@ function views_rss_media_field_formatter_info() {
     'media_thumbnail' => array(
       'label' => t('RSS <media:thumbnail> element'),
       'field types' => array('image', 'file', 'video'),
+      'settings' => array(),
+    ),
+    'media_category' => array(
+      'label' => t('RSS <media:category> element'),
+      'field types' => array('taxonomy_term_reference'),
+      'settings' => array(),
     ),
   );
   return $formatters;
@@ -169,26 +175,30 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       $item = (array) $item['thumbnailfile'];
     }
 
-    // Inside a view item may contain NULL data. In that case, just return.
-    if (empty($item['fid'])) {
-      unset($items[$delta]);
-      continue;
-    }
+    if ($display['type'] == 'media_content' || $display['type'] == 'media_thumbnail') {
 
-    // Default file URL.
-    $item_uri = $item['uri'];
-    $url = file_create_url($item_uri);
-
-    // For images provide styled image URL if required.
-    if (!empty($display['settings']['image_style']) && $image_style = image_style_load($display['settings']['image_style'])) {
-      // Get full image URI based on provided image style.
-      $url = image_style_url($display['settings']['image_style'], $item_uri);
-      // Make sure that image style file has already been created.
-      $path = image_style_path($display['settings']['image_style'], $item_uri);
-      if (!file_exists(drupal_realpath($path))) {
-        image_style_create_derivative($image_style, $item_uri, $path);
+      // Inside a view item may contain NULL data. In that case, just return.
+      if (empty($item['fid'])) {
+        unset($items[$delta]);
+        continue;
       }
-      $item_uri = $path;
+
+      // Default file URL.
+      $item_uri = $item['uri'];
+      $url = file_create_url($item_uri);
+
+      // For images provide styled image URL if required.
+      if (!empty($display['settings']['image_style']) && $image_style = image_style_load($display['settings']['image_style'])) {
+        // Get full image URI based on provided image style.
+        $url = image_style_url($display['settings']['image_style'], $item_uri);
+        // Make sure that image style file has already been created.
+        $path = image_style_path($display['settings']['image_style'], $item_uri);
+        if (!file_exists(drupal_realpath($path))) {
+          image_style_create_derivative($image_style, $item_uri, $path);
+        }
+        $item_uri = $path;
+      }
+
     }
 
     if ($display['type'] == 'media_content') {
@@ -267,32 +277,39 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
         $field_extra_field = 'field_' . $extra_field;
         // Images could have 'title' and 'description' properties.
         if (isset($item[$extra_field]) && $item[$extra_field]) {
-          $rss_element['value'][] = array(
+          $subelement = array(
             'key' => 'media:' . $extra_field,
             'value' => $item[$extra_field],
           );
         }
         // Other fieldable entities (think media) could have, well, fields.
         if (isset($item[$field_extra_field][LANGUAGE_NONE][0]['value']) && $item[$field_extra_field][LANGUAGE_NONE][0]['value']) {
-          $rss_element['value'][] = array(
+          $subelement = array(
             'key' => 'media:' . $extra_field,
             'value' => $item[$field_extra_field][LANGUAGE_NONE][0]['value'],
           );
         }
+        // Check whether original value format is text or HTML.
+        $type = 'plain';
+        $value_decoded = htmlspecialchars_decode($subelement['value'], ENT_QUOTES);
+        if ($value_decoded != strip_tags($value_decoded)) {
+          $type = 'html';
+        }
+        $subelement['attributes']['type'] = $type;
+        $rss_element['value'][] = $subelement;
       }
 
     }
 
     if ($display['type'] == 'media_thumbnail') {
-
+      // Main RSS element.
       $rss_element = array(
         'key' => 'media:thumbnail',
         'attributes' => array(
           'url' => $url,
         ),
       );
-
-      // Additional properties for images.
+      // Attributes for images: width and height.
       if ($item['type'] == 'image') {
         $media_info = image_load($item_uri);
         if (!empty($media_info)) {
@@ -301,7 +318,28 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
           $rss_element['attributes']['height'] = $media_info->info['height'];
         }
       }
+      // Attribute: time.
+      if (isset($item['field_time'][LANGUAGE_NONE][0]['value']) && $item['field_time'][LANGUAGE_NONE][0]['value']) {
+        $rss_element['attributes']['time'] = $item['field_time'][LANGUAGE_NONE][0]['value'];
+      }
+    }
 
+    if ($display['type'] == 'media_category') {
+      // Main RSS element.
+      $term = taxonomy_term_load($item['tid']);
+      $rss_element = array(
+        'key' => 'media:category',
+        'value' => $term->name,
+      );
+      // Attributes: scheme and label.
+      $attributes = array('scheme', 'label');
+      foreach ($attributes as $attribute) {
+        $field_name = 'field_' . $attribute;
+        $field_items = field_get_items('taxonomy_term', $term, $field_name);
+        if (!empty($field_items[0]['value'])) {
+          $rss_element['attributes'][$attribute] = $field_items[0]['value'];
+        }
+      }
     }
 
     $element[$delta] = array(
@@ -313,6 +351,5 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
 
   }
 
-//  dpm($element, '$element');
   return $element;
 }
