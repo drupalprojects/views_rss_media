@@ -274,6 +274,7 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
       // Other additional sub-elements.
       $extra_fields = array('title', 'description');
       foreach ($extra_fields as $extra_field) {
+        $subelement = array();
         $field_extra_field = 'field_' . $extra_field;
         // Images could have 'title' and 'description' properties.
         if (isset($item[$extra_field]) && $item[$extra_field]) {
@@ -290,13 +291,15 @@ function views_rss_media_field_formatter_view($entity_type, $entity, $field, $in
           );
         }
         // Check whether original value format is text or HTML.
-        $type = 'plain';
-        $value_decoded = htmlspecialchars_decode($subelement['value'], ENT_QUOTES);
-        if ($value_decoded != strip_tags($value_decoded)) {
-          $type = 'html';
+        if ($subelement) {
+          $type = 'plain';
+          $value_decoded = htmlspecialchars_decode($subelement['value'], ENT_QUOTES);
+          if ($value_decoded != strip_tags($value_decoded)) {
+            $type = 'html';
+          }
+          $subelement['attributes']['type'] = $type;
+          $rss_element['value'][] = $subelement;
         }
-        $subelement['attributes']['type'] = $type;
-        $rss_element['value'][] = $subelement;
       }
 
     }
