@@ -38,6 +38,8 @@ function views_rss_media_field_formatter_settings_form($field, $instance, $view_
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
 
+  $element = array();
+
   if ($field['type'] == 'image' || $field['type'] == 'file') {
     $image_styles = image_style_options(FALSE);
     $element['image_style'] = array(
